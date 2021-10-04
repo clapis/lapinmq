@@ -16,14 +16,6 @@ namespace LapinMQ.Controllers
             _endpoint = endpoint;
         }
 
-        [HttpPost("saga")]
-        public async Task<IActionResult> CreateOrder(SubmitOrder order)
-        {
-            await _endpoint.Publish(order);
-
-            return Accepted(order);
-        }
-        
         [HttpPost("redelivery")]
         public async Task<IActionResult> Create(OrderRedelivery order)
         {

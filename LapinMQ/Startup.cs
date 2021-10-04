@@ -1,11 +1,8 @@
 using System;
 using GreenPipes;
 using LapinMQ.Consumers;
-using LapinMQ.Contracts;
 using LapinMQ.Exceptions;
-using LapinMQ.StateMachines;
 using MassTransit;
-using MassTransit.Saga;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,13 +19,13 @@ namespace LapinMQ
 
             services.AddMassTransit(x =>
             {
-                x.AddDelayedMessageScheduler();
                 x.SetKebabCaseEndpointNameFormatter();
 
                 x.AddConsumer<OrderRedeliveryConsumer>();
 
                 x.UsingRabbitMq((context, config) =>
                 {
+                    config.ConfigureEndpoints(context);
                     config.UseDelayedMessageScheduler();
 
                     config.UseDelayedRedelivery(redelivery =>
@@ -36,46 +33,7 @@ namespace LapinMQ
                         redelivery.Interval(2, TimeSpan.FromSeconds(1));
                         redelivery.Handle<RedeliveryException>();
                     });
-                    
-                    config.UseMessageRetry(retry =>
-                    {
-                        retry.Interval(2, TimeSpan.FromSeconds(1));
-                        retry.Handle<RedeliveryException>();
-                    });
-                    
-                    // config.ConfigureEndpoints(context);
-                    
-                    config.ReceiveEndpoint("order-redelivery", endpoint =>
-                    {
-                        endpoint.Durable = true;
-                        endpoint.PrefetchCount = 1;
-                        endpoint.UseConcurrencyLimit(1);
-                        
-                        endpoint.Consumer<OrderRedeliveryConsumer>(context, consumer =>
-                        {
-                            
-                        });
-                    });
-                    
-                    config.ReceiveEndpoint("order-state", endpoint =>
-                    {
-                        endpoint.Durable = true;
-                        endpoint.StateMachineSaga(
-                            context.GetRequiredService<OrderStateMachine>(), 
-                            context.GetRequiredService<ISagaRepository<OrderState>>(),
-                            saga =>
-                            {
-                                
-                            });
-                    });
                 });
-                
-                x.AddSagaStateMachine<OrderStateMachine, OrderState>()
-                    .MongoDbRepository(r =>
-                    {
-                        r.Connection = "mongodb://127.0.0.1";
-                        r.DatabaseName = "lapinmq";
-                    });
             });
 
             services.AddMassTransitHostedService();
