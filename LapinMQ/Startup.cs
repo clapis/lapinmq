@@ -1,5 +1,6 @@
 using System;
 using GreenPipes;
+using GreenPipes.Pipes;
 using LapinMQ.Consumers;
 using LapinMQ.Contracts;
 using LapinMQ.Exceptions;
@@ -30,36 +31,35 @@ namespace LapinMQ
                 x.UsingRabbitMq((context, config) =>
                 {
                     config.UseDelayedMessageScheduler();
-
-                    config.UseDelayedRedelivery(redelivery =>
-                    {
-                        redelivery.Interval(2, TimeSpan.FromSeconds(1));
-                        redelivery.Handle<RedeliveryException>();
-                    });
-                    
-                    config.UseMessageRetry(retry =>
-                    {
-                        retry.Interval(2, TimeSpan.FromSeconds(1));
-                        retry.Handle<RedeliveryException>();
-                    });
                     
                     // config.ConfigureEndpoints(context);
                     
                     config.ReceiveEndpoint("order-redelivery", endpoint =>
                     {
-                        endpoint.Durable = true;
-                        endpoint.PrefetchCount = 1;
-                        endpoint.UseConcurrencyLimit(1);
-                        
-                        endpoint.Consumer<OrderRedeliveryConsumer>(context, consumer =>
+                        config.UseDelayedRedelivery(redelivery =>
                         {
-                            
+                            redelivery.Interval(2, TimeSpan.FromSeconds(1));
+                            redelivery.Handle<RedeliveryException>();
                         });
+                    
+                        config.UseMessageRetry(retry =>
+                        {
+                            retry.Interval(2, TimeSpan.FromSeconds(1));
+                            retry.Handle<RedeliveryException>();
+                        });
+
+                        endpoint.Consumer<OrderRedeliveryConsumer>();
+                    });
+                    
+                    config.ReceiveEndpoint("ignore-exception", endpoint =>
+                    {
+                        endpoint.UseRescue(new EmptyPipe<ExceptionConsumeContext>(), cfg => cfg.Handle<DontCareException>());
+
+                        endpoint.Handler<ThrowDontCare>(_ => throw new DontCareException());
                     });
                     
                     config.ReceiveEndpoint("order-state", endpoint =>
                     {
-                        endpoint.Durable = true;
                         endpoint.StateMachineSaga(
                             context.GetRequiredService<OrderStateMachine>(), 
                             context.GetRequiredService<ISagaRepository<OrderState>>(),

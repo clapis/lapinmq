@@ -1,6 +1,6 @@
 namespace LapinMQ.Contracts
 {
-    public class OrderRedelivery
+    public class RedeliverOrder
     {
         
     }

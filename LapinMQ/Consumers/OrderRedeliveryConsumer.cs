@@ -5,9 +5,9 @@ using MassTransit;
 
 namespace LapinMQ.Consumers
 {
-    public class OrderRedeliveryConsumer : IConsumer<OrderRedelivery>
+    public class OrderRedeliveryConsumer : IConsumer<RedeliverOrder>
     {
-        public Task Consume(ConsumeContext<OrderRedelivery> context)
+        public Task Consume(ConsumeContext<RedeliverOrder> context)
         {
             var message = $@"RedeliveryCount: {context.GetRedeliveryCount()}
                              Retry Attempt:{context.GetRetryAttempt()}
